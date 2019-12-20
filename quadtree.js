@@ -1,24 +1,40 @@
-
-
+/*======================================================================
+|>>> Class BBox (Bounding Box)
++-----------------------------------------------------------------------
+| Purpose: Simple 2D Bounding Box (technically square) used to represent 
+|          the location and area of a Quadtree QuadNode via its top-left 
+|          and bottom-right coordinates. Implements the data structure 
+|          alongside simple console report and debug display functions.
++=====================================================================*/
 class BBox {
+
   constructor(x1,y1,x2,y2){
     this.x1=x1;
     this.x2=x2;
     this.y1=y1;
     this.y2=y2;
-  }
+  } // Ends Constructor
 
   report(){
     console.log(this.x1 + " | " + this.y1 + " | " + this.x2 + " | " + this.y2);
-  }
+  } // Ends Function report
 
   display(){
     noFill();stroke(0,255,0);
     rect(this.x1,this.y1,this.x2-this.x1,this.y2-this.y1);
-  }
-}
+  } // Ends Function display
 
+} // Ends Class BBox 
 
+/*======================================================================
+|>>> Class QuadNode (Quadtree Node)
++-----------------------------------------------------------------------
+| Purpose: Implements Data Structure and Operations for a Point-Region
+|          Quadtree. Each operation (insert, remove, and display at the
+|          time of writing) utilizes recursion upon its subtree.
++-----------------------------------------------------------------------
+| Implementation Notes:
++=====================================================================*/
 class QuadNode{
 
   constructor(box){
@@ -31,6 +47,21 @@ class QuadNode{
     this.isContainer = false;
   } // Ends Constructor
 
+  /*----------------------------------------------------------------------
+  |>>> Function containsPoint 
+  +-----------------------------------------------------------------------
+  | Purpose: Given BBox (bounding box) and p5.vector reference, determines
+  |          if the point exists within the bounding box area, returning a
+  |          corresponding boolean value based on the result.
+  | Input:   - BBox      bbox: Bounding box to test if point within
+  |          - p5.vector pt:   Point to test if within Bounding Box
+  +-----------------------------------------------------------------------  
+  | Implementation Notes:
+  |   > Why require bbox parm? Despite being a QuadNode class function, a
+  |     BBox input is required (e.g. vs using QuadNode's BBox). The reason
+  |     why is that this function is used to test points within the bounds
+  |     of this node's child nodes in addition to its own area.
+  +---------------------------------------------------------------------*/
   containsPoint(bbox, pt){
     if ( pt.x >= bbox.x1 && 
          pt.x < bbox.x2  && 
@@ -41,7 +72,21 @@ class QuadNode{
     return false;    
   } // Ends Function containsPoint
 
-
+  /*----------------------------------------------------------------------
+  |>>> Function insertPoint 
+  +-----------------------------------------------------------------------
+  | Purpose: Inserts a point into the Quadtree. If the point is not within
+  |          the area of the call, the insertion is rejected. If the node
+  |          is a leaf with no point within, the insertion succeeds. Else,
+  |          the node 'splits' into 4 children, then inserts its own point
+  |          into a child, then does resursive insertion on input point.
+  |          This might lead to a 'cascade' of recursive insertions if the
+  |          points are very close to each other.
+  | Input:   - p5.vector pt: point to insert into Quadtree
+  +-----------------------------------------------------------------------
+  | Implementation Notes: The description above and inline comments within
+  |                       the code provide sufficient enough detail.
+  +---------------------------------------------------------------------*/
   insertPoint(pt){
 
     // If the point does not exist within this cell - return
@@ -73,6 +118,7 @@ class QuadNode{
       this.SW = new QuadNode( new BBox(this.bbox.x1,      this.bbox.y1+yMid, this.bbox.x1+xMid, this.bbox.y2) );
       this.SE = new QuadNode( new BBox(this.bbox.x1+xMid, this.bbox.y1+yMid, this.bbox.x2,      this.bbox.y2) );
 
+      // Place this node's point within the appropriate child
       if (this.containsPoint(this.NW.bbox, this.point)) {
         this.NW.point=this.point;
         this.isContainer=true;
@@ -92,7 +138,7 @@ class QuadNode{
 
     }
 
-
+    // Place input point within its appropriate child via recursive call
     if (this.NW.insertPoint(pt)) {return true;}
     if (this.NE.insertPoint(pt)) {return true;}
     if (this.SW.insertPoint(pt)) {return true;}
@@ -100,22 +146,35 @@ class QuadNode{
 
     return false;
 
-
   } // Ends Function insertPoint
 
 
-  /* BASIC ALGORITHM: 
-     > If I am a leaf and point exists in my area, do:
-        1) set point to null
-        2) return
-
-     > If I am a container do: 
-        1) recurse call into child that point is contained within
-        2) on return from recursion, check if all 4 children are leaves with no points within them
-        3) if exactly one child is a leaf with a point, set this node's point to the child's point
-        4) if conditions 2 or 3 happened, set all children to null and this node as a leaf node
-        5) return
-  */
+  /*----------------------------------------------------------------------
+  |>>> Function removePoint 
+  +-----------------------------------------------------------------------
+  | Purpose: Removes a point into the Quadtree via the following design. 
+  |          If the node is a leaf and the point exists in its area, the
+  |          point is simply set to null (now implying empty leaf) and the
+  |          function returns. Else if a container node, a recursive call
+  |          of this function is made on the child in bounds of the point.
+  |          On returning from recursion: several scenarios are possible,
+  |          checked for, and correspondingly handled as follows:
+  |            (1) If all children are empty leaves (i.e. point==null),
+  |                set them all to null (i.e. 'prune' tree), then set this
+  |                node as an empty leaf. If this node's siblings are also
+  |                empty leaves, this node's parent will recurse the same 
+  |                process on its return from recursion on child nodes.
+  |            (2) Else if exactly 1 child is a non-empty leaf, set this
+  |                node as a non-empty leaf with that child's point (i.e.
+  |                'folding up' the tree), then set all children to null 
+  |                (i.e. 'prune').
+  |            (3) Else, one or more children are either containers and/or
+  |                non-empty leaves), so do nothing to them and return.
+  | Input:   - p5.vector pt: point to remove from the Quadtree
+  +-----------------------------------------------------------------------
+  | Implementation Notes: The description above and inline comments within
+  |                       the code provide sufficient enough detail.
+  +---------------------------------------------------------------------*/
   removePoint(pt){
 
     // I am a leaf and point exists in my area -> set point to null and return
@@ -171,12 +230,17 @@ class QuadNode{
       this.isContainer = false;      
     }
 
-    // Otherwise: 2 or more children leaves have points -> leave them alone for now
-
   } // Ends Function removePoint
 
 
-  // This is a recursive function
+  /*----------------------------------------------------------------------
+  |>>> Function drawTree 
+  +-----------------------------------------------------------------------
+  | Purpose: Simple function that displays a QuadNode and its subtree to
+  |          the canvas i.e. the 'Visualization Function'. Note that it's
+  |          naturally recursive, and to display the entire Quadtree, call
+  |          this upon the external root reference (i.e. in main.js)
+  +---------------------------------------------------------------------*/
   drawTree(){
     noFill();
 
@@ -190,6 +254,7 @@ class QuadNode{
     if (this.NE!=null) {this.NE.drawTree();}
     if (this.SE!=null) {this.SE.drawTree();}
     if (this.SW!=null) {this.SW.drawTree();}
+
   } // Ends Method drawTree
 
-}
+} // Ends Class QuadNode
