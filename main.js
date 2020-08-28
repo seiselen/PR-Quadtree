@@ -36,7 +36,6 @@
 |                 and interactively via right mouse click, which I think
 |                 was a 'next steps' goal of the original version!
 *=====================================================================*/
-
 var myQuadtree;
 
 function setup() {
